@@ -1,0 +1,160 @@
+# チュートリアル：JARTIC2GeoJSONの使い方
+
+このチュートリアルでは、JARTIC2GeoJSONツールを使って交通規制情報のCSVファイルをGeoJSON形式に変換し、さらにジオメトリを修正する基本的な手順を説明します。
+
+## 1. インストールと準備
+
+### 1.1 リポジトリのクローン
+
+```bash
+git clone https://github.com/yourusername/jartic2geojson.git
+cd jartic2geojson
+```
+
+### 1.2 依存パッケージのインストール
+
+```bash
+pip install -r requirements.txt
+```
+
+### 1.3 データの準備
+
+サンプルCSVデータをデータディレクトリに配置します：
+
+```bash
+cp path/to/your/traffic_data.csv data/
+```
+
+## 2. 基本的な変換操作
+
+### 2.1 単一ファイルの変換
+
+```bash
+python convert_jartic.py data/traffic_data.csv -o output_data/example
+```
+
+このコマンドは、`data/traffic_data.csv`を解析し、変換結果を`output_data/example`ディレクトリに保存します。
+
+### 2.2 規制種別ごとにファイルを分割
+
+一方通行や通行止めなど、規制種別ごとに別のGeoJSONファイルに分割するには：
+
+```bash
+python convert_jartic.py data/traffic_data.csv -o output_data/example -s
+```
+
+このコマンドは、共通規制種別コードごとに別々のGeoJSONファイルを作成します。
+
+## 3. ジオメトリの修正
+
+GeoJSONファイルに含まれる無効なジオメトリを検出して修正するには：
+
+### 3.1 単一ディレクトリの処理
+
+```bash
+python repair_geometries.py -i output_data/example -o fixed_geojson/example -l geometry_logs/example
+```
+
+このコマンドは、`output_data/example`ディレクトリ内のGeoJSONファイルを処理し、修正結果を`fixed_geojson/example`ディレクトリに保存します。
+
+### 3.2 サブディレクトリを含む再帰的な処理
+
+```bash
+python repair_geometries.py -i output_data -o fixed_geojson -l geometry_logs -r
+```
+
+このコマンドは、`output_data`ディレクトリとそのサブディレクトリを再帰的に処理します。
+
+### 3.3 並列処理による高速化
+
+```bash
+python repair_geometries.py -i output_data -o fixed_geojson -l geometry_logs -r --threads 4
+```
+
+このコマンドは、4つのスレッドを使って並列処理を行います。
+
+## 4. バッチ処理
+
+複数のCSVファイルを一括処理するには：
+
+### 4.1 基本的なバッチ処理
+
+```bash
+./batch_convert.sh
+```
+
+このスクリプトは、`data`ディレクトリ内のすべてのCSVファイルを処理します。
+
+### 4.2 変換後に自動的にジオメトリを修正
+
+```bash
+./batch_convert.sh -f
+```
+
+このコマンドは、変換処理の後に自動的にジオメトリ修正も実行します。
+
+### 4.3 並列処理を使用したジオメトリ修正
+
+```bash
+./batch_convert.sh -s -t 4
+```
+
+このコマンドは、変換処理の後に`repair_geometries.py`を使用して4スレッドの並列処理でジオメトリを修正します。
+
+## 5. 出力結果の確認
+
+### 5.1 GeoJSONファイルの確認
+
+変換されたGeoJSONファイルはGISソフトウェア（QGIS、ArcGISなど）や、オンラインサービス（geojson.io、Mapboxなど）で確認できます。
+
+### 5.2 サマリーレポートの確認
+
+ジオメトリ修正処理の結果は、ログディレクトリ内のサマリーレポートで確認できます：
+
+```bash
+cat geometry_logs/summary_*.txt
+```
+
+このテキストファイルには、修正したフィーチャの数、成功率、使用した修正方法などの統計情報が含まれています。
+
+## 6. 応用：Pythonからの利用
+
+### 6.1 変換機能を使用
+
+```python
+from jartic2geojson.core.converter import convert_csv_to_geojson
+
+output_files = convert_csv_to_geojson(
+    input_file="data/traffic_data.csv",
+    output_dir="output_data/example",
+    split_by_regulation=True
+)
+
+print(f"出力ファイル: {output_files}")
+```
+
+### 6.2 ジオメトリ修正機能を使用
+
+```python
+from jartic2geojson.postprocess import fix_geojson_files
+
+results = fix_geojson_files(
+    input_dir="output_data/example",
+    output_dir="fixed_geojson/example",
+    log_dir="geometry_logs/example",
+    recursive=False,
+    verbose=True
+)
+
+print(f"処理したファイル数: {len(results)}")
+```
+
+## 7. トラブルシューティング
+
+- **列の検出に失敗する場合**：CSVファイルの列名が想定されるパターンと異なる可能性があります。デバッグモード（`-d`）を使用して詳細情報を表示してください。
+
+- **メモリエラーが発生する場合**：大きなファイルを処理する際は、`--chunk-size`を小さくしてメモリ使用量を削減してください。
+
+- **処理が遅い場合**：`--threads`オプションを使用して並列処理を有効にしてください。
+
+ご質問や問題がある場合は、GitHubのIssueからお問い合わせください。
